@@ -5,6 +5,7 @@ import (
 	"encoding/binary"
 	"errors"
 	"io"
+	"strconv"
 )
 
 type Package struct {
@@ -13,6 +14,18 @@ type Package struct {
 	bodyLen   [4]byte
 	header    []byte
 	body      []byte
+}
+
+func NewPackage() *Package {
+	return &Package{}
+}
+
+func (pkg *Package) GetHeader() []byte {
+	return pkg.header
+}
+
+func (pkg *Package) GetBody() []byte {
+	return pkg.body
 }
 
 //readWithHeader
@@ -24,19 +37,22 @@ func (pkg *Package) ReadWithHeader(reader io.Reader) (err error) {
 		return errors.New("read error...")
 	}
 
-	len := int(n)
-	headerLen := int(sizeBuf[4:8])
-	bodyLen := int(sizeBuf[8:12])
+	len := toInt(sizeBuf[:4])
+	headerLen := toInt(sizeBuf[4:8])
+	bodyLen := toInt(sizeBuf[8:12])
 
-	total := make([]byte, 0, len)
-	n2, err := io.ReadAtLeast(reader, total, len)
+	total := make([]byte, headerLen + bodyLen)
+	n2, err := io.ReadAtLeast(reader, total, headerLen + bodyLen)
 
 	header := total[0:headerLen]
 	body := total[headerLen:bodyLen]
 
-	pkg.len = [4]byte(len)
-	pkg.headerLen = [4]byte(headerLen)
-	pkg.bodyLen = [4]byte(bodyLen)
+	copy([]byte(strconv.Itoa(len))[0:4], pkg.len[:])
+
+	copy([]byte(strconv.Itoa(len))[0:4], pkg.len[:])
+	copy([]byte(strconv.Itoa(headerLen))[0:4], pkg.headerLen[:])
+	copy([]byte(strconv.Itoa(headerLen))[0:4], pkg.bodyLen[:])
+
 	pkg.header = header
 	pkg.body = body
 
@@ -52,12 +68,12 @@ func (pkg *Package) ReadWithoutHeader(reader io.Reader) (err error) {
 	n, err := reader.Read(buf)
 
 	pkg.body = buf
-	pkg.bodyLen = [4]byte(n)
 
-	pkg.header = make([]byte, 0, 0)
-	pkg.headerLen = [4]byte(0)
+	pkg.header = make([]byte, 0)
+	copy([]byte(strconv.Itoa(0))[0:4], pkg.headerLen[:])
+	copy([]byte(strconv.Itoa(n))[0:4], pkg.bodyLen[:])
+	copy([]byte(strconv.Itoa(n+0))[0:4], pkg.len[:])
 
-	pkg.len = [4]byte(n + 0)
 	if err != nil {
 		return err
 	} else {
@@ -67,12 +83,13 @@ func (pkg *Package) ReadWithoutHeader(reader io.Reader) (err error) {
 
 //writeWithHeader
 func (pkg *Package) WriteWithHeader(writer io.Writer) (err error) {
-	total := make([]byte, 0, 4+4+4+int(pkg.len))
-	copy(total, []byte(pkg.len))
-	copy(total[4:], []byte(pkg.headerLen))
-	copy(total[4+4:], []byte(pkg.bodyLen))
-	copy(total[4+4+4:], pkg.header)
-	copy(total[4+4+4+len(pkg.header):], pkg.body)
+	total := make([]byte, 0, 4+4+4+toInt(pkg.len[0:4]))
+
+	copy(total, pkg.len[:])
+	copy(total[4:], pkg.headerLen[:])
+	copy(total[4+4:], pkg.bodyLen[:])
+	copy(total[4+4+4:], pkg.header[:])
+	copy(total[4+4+4+len(pkg.header):], pkg.body[:])
 	n, err := writer.Write(total)
 	if n < 0 || err != nil {
 		return errors.New("write error...")
@@ -114,4 +131,23 @@ func (pkg *Package) ValueOf(header []byte, body []byte) {
 
 	pkg.header = header
 	pkg.body = body
+}
+
+//to bytes
+func (pkg *Package) ToBytes() []byte {
+	totalBytes := make([]byte, 4+4+4+len(pkg.header)+len(pkg.body))
+
+	copy(totalBytes[:4], pkg.len[:])
+	copy(totalBytes[4:8], pkg.headerLen[:])
+	copy(totalBytes[8:12], pkg.bodyLen[:])
+	copy(totalBytes[12:12+len(pkg.header)], pkg.header[:])
+	copy(totalBytes[12+len(pkg.header):12+len(pkg.header)+len(pkg.body)], pkg.body[:])
+
+	return totalBytes
+}
+
+func toInt(bytes []byte) (int) {
+	val := string(bytes)
+	intValue, _ := strconv.Atoi(val)
+	return intValue
 }

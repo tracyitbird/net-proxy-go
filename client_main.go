@@ -9,6 +9,10 @@ import (
 	"strconv"
 )
 
+func init() {
+	log.SetOutput(os.Stdout)
+}
+
 func main() {
 	listenPort := 50081
 

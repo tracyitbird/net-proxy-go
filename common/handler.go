@@ -1,5 +1,5 @@
 package common
 
-type Handler interface {
-	handle(pkg *Package) (newPkg Package)
+type PackageHandler interface {
+	Handle(pkg *Package) (newPkg Package)
 }

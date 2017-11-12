@@ -5,14 +5,20 @@ import (
 	"log"
 	"net"
 	"os"
+
+	"../net-proxy-go/server"
 )
 
-func main() {
-	listenPort := 20080
-	fmt.Print("server start...\n")
+func init() {
 	log.SetOutput(os.Stdout)
+}
 
-	listener, err := net.Listen("tcp", ":20080")
+func main() {
+	listenPort := "60081"
+	listenAddrAndPort := ":" + listenPort
+	fmt.Print("server start...\n")
+
+	listener, err := net.Listen("tcp", listenAddrAndPort)
 	if err != nil {
 		log.Printf("server starting listen failed at port [%v] ...\n", listenPort)
 	}
@@ -27,6 +33,6 @@ func main() {
 		}
 		log.Printf("accept conn [%v] success ...\n", localConn.RemoteAddr())
 
-		//go acceptConn(localConn)
+		go server.AcceptConn(localConn)
 	}
 }
