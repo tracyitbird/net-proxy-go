@@ -3,20 +3,18 @@ package server
 import (
 	"fmt"
 	"log"
-	"os"
 	"net"
+	"os"
 	"strings"
 )
 
-
-
-func acceptConn(conn net.Conn) {
+func AcceptConn(conn net.Conn) {
 	defer func() {
 		conn.Close()
 	}()
 
 	//100kb
-	buf := make([]byte, 1024 * 100)
+	buf := make([]byte, 1024*100)
 	n, err := conn.Read(buf)
 	if err != nil {
 		log.Printf("read bytes form conn %v failed...\n", conn.RemoteAddr())
@@ -44,7 +42,7 @@ func acceptConn(conn net.Conn) {
 	}
 }
 
-func parseProctol(req []byte, len int) (int) {
+func parseProctol(req []byte, len int) int {
 	//TODO SOCKS_5
 
 	//HTTPS
@@ -70,7 +68,7 @@ func parseProctol(req []byte, len int) (int) {
 		requestMethod := string(req[:httpOpePos])
 		log.Println("requestMethod = ", requestMethod)
 		if strings.EqualFold(requestMethod, "GET") || strings.EqualFold(requestMethod, "POST") {
-			return  HTTP
+			return HTTP
 		}
 	}
 

@@ -3,8 +3,8 @@ package main
 import (
 	"fmt"
 	"log"
-	"os"
 	"net"
+	"os"
 )
 
 func main() {

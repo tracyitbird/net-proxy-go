@@ -1,21 +1,23 @@
 package common
 
 import (
-	"io"
+	"bytes"
+	"encoding/binary"
 	"errors"
+	"io"
 )
 
-type BasePackage struct {
-	len [4]byte
+type Package struct {
+	len       [4]byte
 	headerLen [4]byte
-	bodyLen [4]byte
-	header []byte
-	body []byte
+	bodyLen   [4]byte
+	header    []byte
+	body      []byte
 }
 
 //readWithHeader
-func (pkg *BasePackage) ReadWithHeader (reader io.Reader) (err error){
-	sizeBuf := make([]byte, 0, 4 + 4 + 4)
+func (pkg *Package) ReadWithHeader(reader io.Reader) (err error) {
+	sizeBuf := make([]byte, 0, 4+4+4)
 	n, err := io.ReadAtLeast(reader, sizeBuf, len(sizeBuf))
 
 	if n < 0 || err != nil {
@@ -28,7 +30,6 @@ func (pkg *BasePackage) ReadWithHeader (reader io.Reader) (err error){
 
 	total := make([]byte, 0, len)
 	n2, err := io.ReadAtLeast(reader, total, len)
-
 
 	header := total[0:headerLen]
 	body := total[headerLen:bodyLen]
@@ -46,10 +47,9 @@ func (pkg *BasePackage) ReadWithHeader (reader io.Reader) (err error){
 }
 
 //readWithoutHeader
-func (pkg *BasePackage) ReadWithoutHeader (reader io.Reader) (err error) {
-	buf := make([]byte, 0, 100 * 1024)
+func (pkg *Package) ReadWithoutHeader(reader io.Reader) (err error) {
+	buf := make([]byte, 0, 100*1024)
 	n, err := reader.Read(buf)
-
 
 	pkg.body = buf
 	pkg.bodyLen = [4]byte(n)
@@ -58,7 +58,7 @@ func (pkg *BasePackage) ReadWithoutHeader (reader io.Reader) (err error) {
 	pkg.headerLen = [4]byte(0)
 
 	pkg.len = [4]byte(n + 0)
-	if err != nil{
+	if err != nil {
 		return err
 	} else {
 		return nil
@@ -66,8 +66,8 @@ func (pkg *BasePackage) ReadWithoutHeader (reader io.Reader) (err error) {
 }
 
 //writeWithHeader
-func (pkg *BasePackage) WriteWithHeader (writer io.Writer) (err error){
-	total := make([]byte, 0, 4 + 4 + 4 + int(pkg.len))
+func (pkg *Package) WriteWithHeader(writer io.Writer) (err error) {
+	total := make([]byte, 0, 4+4+4+int(pkg.len))
 	copy(total, []byte(pkg.len))
 	copy(total[4:], []byte(pkg.headerLen))
 	copy(total[4+4:], []byte(pkg.bodyLen))
@@ -82,7 +82,7 @@ func (pkg *BasePackage) WriteWithHeader (writer io.Writer) (err error){
 }
 
 //writeWithoutHeader
-func (pkg *BasePackage) WriteWithoutHeader (writer io.Writer) (err error){
+func (pkg *Package) WriteWithoutHeader(writer io.Writer) (err error) {
 	n, err := writer.Write(pkg.body)
 	if n < 0 || err != nil {
 		return errors.New("write error...")
@@ -92,3 +92,26 @@ func (pkg *BasePackage) WriteWithoutHeader (writer io.Writer) (err error){
 }
 
 //readfully
+
+//value of
+func (pkg *Package) ValueOf(header []byte, body []byte) {
+	headerLen := len(header)
+	bodyLen := len(body)
+
+	len := headerLen + bodyLen
+
+	byteBuf := bytes.NewBuffer(make([]byte, 4))
+	binary.Write(byteBuf, binary.LittleEndian, len)
+	copy(pkg.len[:], byteBuf.Bytes()[0:4])
+
+	byteBuf = bytes.NewBuffer(make([]byte, 4))
+	binary.Write(byteBuf, binary.LittleEndian, headerLen)
+	copy(pkg.header[:], byteBuf.Bytes()[0:4])
+
+	byteBuf = bytes.NewBuffer(make([]byte, 4))
+	binary.Write(byteBuf, binary.LittleEndian, bodyLen)
+	copy(pkg.body[:], byteBuf.Bytes()[0:4])
+
+	pkg.header = header
+	pkg.body = body
+}

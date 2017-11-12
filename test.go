@@ -4,7 +4,6 @@ import (
 	"fmt"
 )
 
-
 func main() {
 	firstLine := "CONNECT s0.ssl.qhres.com:443 HTTP/1.1"
 	fmt.Println(firstLine)

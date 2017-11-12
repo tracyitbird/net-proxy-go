@@ -1,13 +1,13 @@
 package common
 
 import (
-	"net"
 	"container/list"
+	"net"
 )
 
 type Connection struct {
-	fromConn *net.Conn
-	toConn	 *net.Conn
+	fromConn     *net.Conn
+	toConn       *net.Conn
 	sendHandlers *list.List
 	recvHandlers *list.List
 }

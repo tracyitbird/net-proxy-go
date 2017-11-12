@@ -1,105 +1,153 @@
 package client
 
 import (
-	"net"
-	"log"
-	"strings"
-	"sync"
 	"errors"
 	"fmt"
+	"log"
+	"net"
+	"strings"
+	"sync"
 	//"time"
+	"container/list"
 	"strconv"
 	"time"
-	"container/list"
+	"../common"
 )
 
 var (
 	addressAndPortParserError = errors.New("can not parse address and port ...")
-	localConnCnt = 0
-	remoteConnCnt = 0
+	localConnCnt              = 0
+	remoteConnCnt             = 0
 )
 
-const (
-	HTTP    = 1
-	HTTPS   = 2
-	SOCKS_5 = 3
-)
+//1.接受本地连接
+//2.构建远程连接,(可用连接连接池)
+//3.循环转发(接受包 -> handler处理 -> 发送)
+//4.错误处理
+func AcceptConn(localConn net.Conn, remoteAddr string, remotePort string) {
+	//	var wg sync.WaitGroup
+	//	wg.Add(1)
 
-// make sure proxy detect done !!!
-func AcceptConn(localConn net.Conn) {
-	var wg sync.WaitGroup
-	wg.Add(1)
+	remoteConn, error := common.GetRemoteConn(remoteAddr, remotePort)
 
-	//100kb
-	buf := make([]byte, 1024 * 100)
-
-	n, err := localConn.Read(buf)
-	if err != nil {
-		log.Printf("read bytes form conn %v failed...\n", localConn.RemoteAddr())
-	}
-
-	//log.Printf("read %v bytes form conn %v ...\n", n, localConn.RemoteAddr())
-	//req := string(buf[:n])
-	//log.Print(len([]byte(req)), "\n")
-	//log.Printf("read content = \n%v ...\n", req)
-
-
-	protocal := parseProtocal(buf, n)
-	switch protocal {
-	case HTTP:
-		log.Println("http protocal...")
-		break
-	case HTTPS:
-		log.Println("https protocal...")
-		break
-	case SOCKS_5:
-		log.Println("socks_5 protocal...")
-		break
-	default:
-		log.Println("unrecognized protocal...")
-		wg.Done()
+	if error != nil {
+		localConn.Close()
+		remoteConn.Close()
+		log.Printf("build conn to remote [%v:%v] failed ...", remoteAddr, remotePort)
 		return
 	}
 
-	addr, port, err := parseAddressAndPort(buf[:n], protocal, localConn)
-	if err != nil {
-		log.Println(err)
-		wg.Done()
-		return
-	}
+	//read
+	//write
+	running := true
+	buf := make([]byte, 1024*100) //100kb
 
-	fmt.Println(addr, port)
-	localConnCnt++
-	//remoteConn, err := connectRemote(addr, port)
-	//if err != nil {
-	//	log.Println(err)
-	//	wg.Done()
-	//	return
-	//}
-	remoteConnCnt++
-
-
-	//pipe(localConn, remoteConn, wg)
-
-	time.Sleep(3 * 1000 * 1000 * 1000)
-	wg.Done()
-	defer func() {
-		//if remoteConn != nil {
-		//	remoteConn.Close()
-		//	log.Printf("close connections [local:%v, remote:%v] ...\n", )
-		//	remoteConnCnt--
-		//}
-		if localConn != nil {
-			localConn.Close()
-			log.Printf("close connection [local:%v] ...\n", localConn.RemoteAddr())
-			localConnCnt--
+	for running {
+		read, err := localConn.Read(buf)
+		if err != nil {
+			log.Printf("read bytes form conn %v failed...\n", localConn.RemoteAddr())
+			remoteConn.Write(buf[:read])
+			running = false
+			break
 		}
-		fmt.Printf("==========================================================================\n [localConnCnt = %v, remoteConnCnt = %v]\n", localConnCnt, remoteConnCnt)
+
+		//write一定是全部写入
+		_, error := remoteConn.Write(buf[:read])
+		if error != nil {
+			log.Printf("write bytes to conn %v failed...\n", remoteConn.RemoteAddr())
+			running = false
+		}
+	}
+
+	defer func() {
+		localConn.Close()
+		remoteConn.Close()
+		log.Printf("tunnel close ...")
 	}()
-	wg.Wait()
 }
 
-func parseProtocal(req []byte, len int) (int) {
+func Read() {
+
+}
+
+func Write() {
+
+}
+// make sure proxy detect done !!!
+//func AcceptConn(localConn net.Conn) {
+//	var wg sync.WaitGroup
+//	wg.Add(1)
+//
+//	//100kb
+//	buf := make([]byte, 1024 * 100)
+//
+//	n, err := localConn.Read(buf)
+//	if err != nil {
+//		log.Printf("read bytes form conn %v failed...\n", localConn.RemoteAddr())
+//	}
+//
+//	//log.Printf("read %v bytes form conn %v ...\n", n, localConn.RemoteAddr())
+//	//req := string(buf[:n])
+//	//log.Print(len([]byte(req)), "\n")
+//	//log.Printf("read content = \n%v ...\n", req)
+//
+//
+//	protocal := parseProtocal(buf, n)
+//	switch protocal {
+//	case HTTP:
+//		log.Println("http protocal...")
+//		break
+//	case HTTPS:
+//		log.Println("https protocal...")
+//		break
+//	case SOCKS_5:
+//		log.Println("socks_5 protocal...")
+//		break
+//	default:
+//		log.Println("unrecognized protocal...")
+//		wg.Done()
+//		return
+//	}
+//
+//	addr, port, err := parseAddressAndPort(buf[:n], protocal, localConn)
+//	if err != nil {
+//		log.Println(err)
+//		wg.Done()
+//		return
+//	}
+//
+//	fmt.Println(addr, port)
+//	localConnCnt++
+//	//remoteConn, err := connectRemote(addr, port)
+//	//if err != nil {
+//	//	log.Println(err)
+//	//	wg.Done()
+//	//	return
+//	//}
+//	remoteConnCnt++
+//
+//
+//	//pipe(localConn, remoteConn, wg)
+//
+//	time.Sleep(3 * 1000 * 1000 * 1000)
+//	wg.Done()
+//	defer func() {
+//		//if remoteConn != nil {
+//		//	remoteConn.Close()
+//		//	log.Printf("close connections [local:%v, remote:%v] ...\n", )
+//		//	remoteConnCnt--
+//		//}
+//		if localConn != nil {
+//			localConn.Close()
+//			log.Printf("close connection [local:%v] ...\n", localConn.RemoteAddr())
+//			localConnCnt--
+//		}
+//		fmt.Printf("==========================================================================\n [localConnCnt = %v, remoteConnCnt = %v]\n", localConnCnt, remoteConnCnt)
+//	}()
+//	wg.Wait()
+//}
+
+func parseProtocal(req []byte, len int) int {
 	//TODO SOCKS_5
 
 	//HTTPS
@@ -141,7 +189,7 @@ func connectRemote(addr string, port int) (remoteConn net.Conn, err error) {
 	return conn, nil
 }
 
-func pipe(localConn net.Conn, remoteConn net.Conn, handlers list.List ,wg sync.WaitGroup) {
+func pipe(localConn net.Conn, remoteConn net.Conn, handlers list.List, wg sync.WaitGroup) {
 	//err wg.Done
 
 }
@@ -162,7 +210,7 @@ func parseAddressAndPort(firstReq []byte, protocal int, localConn net.Conn) (add
 	return "", -1, addressAndPortParserError
 }
 
-func parseHttpsAddress(firstReq []byte) (addr string, port int, err error){
+func parseHttpsAddress(firstReq []byte) (addr string, port int, err error) {
 	//fmt.Println(len(firstReq), cap(firstReq))
 	var firstBlank int
 	var lastBlank int
@@ -191,7 +239,7 @@ func parseHttpsAddress(firstReq []byte) (addr string, port int, err error){
 		return "", -1, addressAndPortParserError
 	}
 
-	addressAndPort := firstReq[firstBlank + 1:lastBlank]
+	addressAndPort := firstReq[firstBlank+1 : lastBlank]
 	infos := strings.Split(string(addressAndPort), ":")
 	//fmt.Printf(">>>%v\n", string(addressAndPort))
 	//fmt.Printf(">>>%v, %v\n", infos[0], infos[1])
@@ -209,7 +257,7 @@ func parseHttpsAddress(firstReq []byte) (addr string, port int, err error){
 
 }
 
-func parseHttpAddress(firstReq []byte) (addr string, port int, err error){
+func parseHttpAddress(firstReq []byte) (addr string, port int, err error) {
 	var firstBlank int
 	var lastBlank int
 	firstBlank = -1

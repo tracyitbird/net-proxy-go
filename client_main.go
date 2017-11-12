@@ -1,21 +1,20 @@
 package main
 
 import (
+	"../net-proxy-go/client"
 	"fmt"
 	"log"
-	"os"
 	"net"
-	"../net-proxy-go/client"
+	"os"
 	"strconv"
 )
 
-const(
-	HTTP = 1;
-	HTTPS = 2;
-	SOCKS_5 = 3
-)
 func main() {
 	listenPort := 50081
+
+	remoteAddr := "127.0.0.1"
+	remotePort := "60081"
+
 	fmt.Print("local client start...\n")
 	//
 	log.SetOutput(os.Stdout)
@@ -40,6 +39,6 @@ func main() {
 		}
 		log.Printf("accept conn [%v] success ...\n", conn.RemoteAddr())
 
-		go client.AcceptConn(conn)
+		go client.AcceptConn(conn, remoteAddr, remotePort)
 	}
 }
