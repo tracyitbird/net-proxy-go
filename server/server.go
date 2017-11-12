@@ -13,6 +13,11 @@ import (
 	"strconv"
 
 	"../common"
+	//"net/http"
+	//"bufio"
+	"fmt"
+	"net/http"
+	"bufio"
 )
 
 const (
@@ -36,8 +41,8 @@ func AcceptConn(localConn net.Conn) {
 	interrupt := false
 
 	var buf []byte
-	var read int
-	var protocal int
+	//var read int
+	var protocal int = -1
 
 	if !interrupt || !protocalDetected {
 		pkg := *common.NewPackage()
@@ -55,24 +60,29 @@ func AcceptConn(localConn net.Conn) {
 		//detect protocal
 
 		body := pkg.GetBody()
-
+		buf = body
 		log.Printf("server recv first pkg = \n%v\n", string(body))
 		protocal = parseProtocal(body, len(body))
 
 		switch protocal {
 		case HTTP:
 			log.Println("http protocal...")
-			break
+			//break
 		case HTTPS:
 			log.Println("https protocal...")
-			break
+			//break
 		case SOCKS_5:
 			log.Println("socks_5 protocal...")
-			break
+			//break
 		default:
 			log.Println("unrecognized protocal...")
 			wg.Done()
+			wg.Done()
 			return
+		}
+
+		if protocal > 0 {
+			protocalDetected = true
 		}
 	}
 
@@ -83,7 +93,9 @@ func AcceptConn(localConn net.Conn) {
 		return
 	}
 
-	addr, port, err := parseAddressAndPort(buf[:read], protocal, localConn)
+	log.Printf("a")
+
+	addr, port, err := parseAddressAndPort(buf, protocal, localConn)
 	if err != nil {
 		wg.Done()
 		wg.Done()
@@ -91,6 +103,9 @@ func AcceptConn(localConn net.Conn) {
 		return
 	}
 
+	log.Printf("b")
+
+	log.Printf("need connect to server [%v:%v]", addr, port)
 	remoteConn, error := common.NewRemoteConn(addr, strconv.Itoa(port))
 
 	if error != nil {
@@ -98,6 +113,21 @@ func AcceptConn(localConn net.Conn) {
 		wg.Done()
 		log.Printf("build conn to remote [%v:%v] failed ...", addr, port)
 		return
+	}
+
+	log.Printf("build conn to remote [%v:%v] success ...", addr, port)
+
+	if(protocal == HTTPS) {
+		//TODO handlers handle
+		httpsConnectResp := "HTTP/1.0 200 Connection Established\r\n\r\n";
+
+		httpsRespPkg := *common.NewPackage()
+		httpsRespPkg.ValueOf(make([]byte, 0), []byte(httpsConnectResp))
+		localConn.Write(httpsRespPkg.ToBytes())
+	}
+
+	if(protocal == HTTP) {
+		remoteConn.Write(buf)
 	}
 
 	//transfer
@@ -259,81 +289,45 @@ func parseAddressAndPort(firstReq []byte, protocal int, localConn net.Conn) (add
 }
 
 func parseHttpsAddress(firstReq []byte) (addr string, port int, err error) {
-	//fmt.Println(len(firstReq), cap(firstReq))
-	var firstBlank int
-	var lastBlank int
-	firstBlank = -1
-	lastBlank = -1
+	//fmt.Printf("first line = \n%v\n", string(firstReq))
+	req, err := http.ReadRequest(bufio.NewReader(strings.NewReader(string(firstReq))))
 
-	for index, value := range firstReq {
-		//fmt.Printf("%v -> %v -> %v\n", index, string(value), int(value))
-		if int(value) == 32 {
-			if firstBlank < 0 {
-				//fmt.Printf("first blank = %v \n", index)
-				firstBlank = index
-				continue
-			}
-
-			if firstBlank > lastBlank {
-				lastBlank = index
-				//fmt.Printf("last blank = %v \n", index)
-				break
-			}
-		}
-	}
-
-	//fmt.Println(firstBlank, lastBlank)
-	if firstBlank < 0 || lastBlank < 0 || lastBlank <= firstBlank {
-		return "", -1, errors.New("unrecognized proctol...")
-	}
-
-	addressAndPort := firstReq[firstBlank + 1 : lastBlank]
-	infos := strings.Split(string(addressAndPort), ":")
-	//fmt.Printf(">>>%v\n", string(addressAndPort))
-	//fmt.Printf(">>>%v, %v\n", infos[0], infos[1])
-	//return "", -1, addressAndPortParserError
-
-	//fmt.Println(string(firstReq[firstBlank:lastBlank]))
-	//fmt.Println(int(infos[1]))
-
-	addr = infos[0]
-	port, err = strconv.Atoi(infos[1])
 	if err != nil {
 		return "", -1, errors.New("unrecognized proctol...")
 	}
-	return addr, port, nil
 
+	addrAndPort := req.Host
+	infos := strings.Split(addrAndPort, ":")
+
+	addr = infos[0]
+	port = 443
+
+	if(len(infos) > 1) {
+		port, err = strconv.Atoi(infos[1])
+	}
+
+	fmt.Printf("addr = %v, port = %v\n", addr, port)
+	return addr, port, nil
 }
 
 func parseHttpAddress(firstReq []byte) (addr string, port int, err error) {
-	var firstBlank int
-	var lastBlank int
-	firstBlank = -1
-	lastBlank = -1
+	//fmt.Printf("first line = \n%v\n", string(firstReq))
+	req, err := http.ReadRequest(bufio.NewReader(strings.NewReader(string(firstReq))))
 
-	for index, value := range firstReq {
-		//fmt.Println(value)
-		if int(value) == 32 {
-			if firstBlank < 0 {
-				firstBlank = index
-			}
-
-			if firstBlank > 0 {
-				lastBlank = index
-			}
-		}
-	}
-
-	if firstBlank < 0 || lastBlank < 0 || lastBlank <= firstBlank {
+	if err != nil {
 		return "", -1, errors.New("unrecognized proctol...")
 	}
 
-	return "", -1, errors.New("unrecognized proctol...")
+	addrAndPort := req.Host
+	infos := strings.Split(addrAndPort, ":")
 
-	//addressAndPort := firstReq[firstBlank + 1:lastBlank]
-	//infos := strings.Split(string(addressAndPort), ":")
-	//
-	//addr = infos[0]
-	//port = int(infos[1])
-	//return addr, port, nil
+	addr = infos[0]
+	port = 80
+
+	if(len(infos) > 1) {
+		port, err = strconv.Atoi(infos[1])
+	}
+
+	fmt.Printf("addr = %v, port = %v\n", addr, port)
+	return addr, port, nil
 }

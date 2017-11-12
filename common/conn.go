@@ -25,6 +25,8 @@ func TransferBytesToPackage(inConn net.Conn, outConn net.Conn, handlers []Packag
 			running = false
 		}
 
+		log.Printf("client read %v bytes from %v", read, inConn.RemoteAddr())
+
 		header := make([]byte, 0)
 		body := make([]byte, read)
 
@@ -37,11 +39,13 @@ func TransferBytesToPackage(inConn net.Conn, outConn net.Conn, handlers []Packag
 			pkg = handler.Handle(&pkg)
 		}
 		//write一定是全部写入
-		_, error := outConn.Write(pkg.ToBytes())
+		write, error := outConn.Write(pkg.ToBytes())
 		if error != nil {
 			log.Printf("write bytes to conn %v failed...\n", outConn.RemoteAddr())
 			running = false
 		}
+		log.Printf("client write %v bytes to remote ...", write, outConn.RemoteAddr())
+
 	}
 
 	defer wg.Done()
