@@ -23,8 +23,7 @@ const (
 
 //1.接受本地连接
 //2.解析包, 解析协议, 解析目的地址
-//3.构建远程连接,(可用连接连接池)
-
+//3.构建远程连接
 //4.循环转发(接受包 -> handler处理 -> 发送)
 //5.错误处理
 func AcceptConn(localConn net.Conn) {
@@ -36,10 +35,13 @@ func AcceptConn(localConn net.Conn) {
 
 	protocalDetected := false
 	interrupt := false
+	hasError := false
 
 	var buf []byte
-	//var read int
 	var protocal int = -1
+	var addr string
+	var port int
+	var remoteConn net.Conn
 
 	if !interrupt || !protocalDetected {
 		pkg := *common.NewPackage()
@@ -73,9 +75,6 @@ func AcceptConn(localConn net.Conn) {
 			break
 		default:
 			log.Println("unrecognized protocal...")
-			wg.Done()
-			wg.Done()
-			return
 		}
 
 		if protocal > 0 {
@@ -86,69 +85,85 @@ func AcceptConn(localConn net.Conn) {
 	if !protocalDetected {
 		wg.Done()
 		wg.Done()
-		localConn.Close()
-		return
+
+		if localConn != nil {
+			localConn.Close()
+		}
+		hasError = true
 	}
 
-	addr, port, err := parseAddressAndPort(buf, protocal, localConn)
-	if err != nil {
-		wg.Done()
-		wg.Done()
-		localConn.Close()
-		return
+
+	if !hasError {
+		parsedAddr, parsedPort, err := parseAddressAndPort(buf, protocal, localConn)
+		addr = parsedAddr
+		port = parsedPort
+
+		if err != nil {
+			wg.Done()
+			wg.Done()
+			if localConn != nil {
+				localConn.Close()
+			}
+			hasError = true
+		}
 	}
 
 	log.Printf("need connect to server [%v:%v]", addr, port)
-	remoteConn, error := common.NewRemoteConn(addr, strconv.Itoa(port))
 
-	if error != nil {
-		wg.Done()
-		wg.Done()
-		log.Printf("build conn to remote [%v:%v] failed ...", addr, port)
-		return
+	if !hasError {
+		conn, error := common.NewRemoteConn(addr, strconv.Itoa(port))
+		remoteConn = conn
+		if error != nil {
+			wg.Done()
+			wg.Done()
+			log.Printf("build conn to remote [%v:%v] failed ...", addr, port)
+			hasError = true
+		} else {
+			log.Printf("build conn to remote [%v:%v] success ...", addr, port)
+		}
 	}
 
-	log.Printf("build conn to remote [%v:%v] success ...", addr, port)
+	if !hasError {
+		if (protocal == HTTPS) {
+			//TODO bytesToPackageHandlers handle
+			httpsConnectResp := "HTTP/1.0 200 Connection Established\r\n\r\n";
+			httpsRespPkg := *common.NewPackage()
+			httpsRespPkg.ValueOf(make([]byte, 0), []byte(httpsConnectResp))
 
-	if(protocal == HTTPS) {
-		//TODO bytesToPackageHandlers handle
-		httpsConnectResp := "HTTP/1.0 200 Connection Established\r\n\r\n";
+			for _, handler := range bytesToPackageHandlers {
+				httpsRespPkg = handler.Handle(&httpsRespPkg)
+			}
 
-		httpsRespPkg := *common.NewPackage()
-		httpsRespPkg.ValueOf(make([]byte, 0), []byte(httpsConnectResp))
-
-		for _, handler := range bytesToPackageHandlers {
-			httpsRespPkg = handler.Handle(&httpsRespPkg)
+			localConn.Write(httpsRespPkg.ToBytes())
 		}
 
-		localConn.Write(httpsRespPkg.ToBytes())
+		if (protocal == HTTP) {
+			remoteConn.Write(buf)
+		}
+
+		if (protocal == SOCKS_5) {
+		}
 	}
 
-	if(protocal == HTTP) {
-		remoteConn.Write(buf)
+	if !hasError {
+		//transfer
+		go common.TransferPackageToBytes(localConn, remoteConn, make([]common.PackageHandler, 0), &wg)
+
+		//transfer
+		go common.TransferBytesToPackage(remoteConn, localConn, make([]common.PackageHandler, 0), &wg)
 	}
 
-	if(protocal == SOCKS_5) {
-	}
-
-	//transfer
-	go common.TransferPackageToBytes(localConn, remoteConn, make([]common.PackageHandler, 0), wg)
-
-	//transfer
-	go common.TransferBytesToPackage(remoteConn, localConn, make([]common.PackageHandler, 0), wg)
-
+	wg.Wait()
+	log.Printf("!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!tunnel close ...")
 	defer func() {
 		if localConn != nil {
 			localConn.Close()
 		}
-
 		if remoteConn != nil {
 			remoteConn.Close()
 		}
-		log.Printf("tunnel close ...")
+		log.Printf("<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<")
 	}()
-
-	wg.Wait()
 }
 
 func parseProtocal(req []byte, len int) int {

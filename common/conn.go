@@ -14,7 +14,7 @@ type Connection struct {
 	recvHandlers *list.List
 }
 
-func TransferBytesToPackage(inConn net.Conn, outConn net.Conn, handlers []PackageHandler, wg sync.WaitGroup) {
+func TransferBytesToPackage(inConn net.Conn, outConn net.Conn, handlers []PackageHandler, wg *sync.WaitGroup) {
 	running := true
 	buf := make([]byte, 1024*100) //100kb
 
@@ -48,10 +48,14 @@ func TransferBytesToPackage(inConn net.Conn, outConn net.Conn, handlers []Packag
 
 	}
 
-	defer wg.Done()
+	defer func() {
+		CloseConn(append(make([]net.Conn, 2), inConn, outConn))
+		wg.Done()
+		log.Printf("---------------------------------------------------> close ... %v", wg)
+	}()
 }
 
-func TransferPackageToBytes(inConn net.Conn, outConn net.Conn, handlers []PackageHandler, wg sync.WaitGroup) {
+func TransferPackageToBytes(inConn net.Conn, outConn net.Conn, handlers []PackageHandler, wg *sync.WaitGroup) {
 	running := true
 	for running {
 		pkg := *NewPackage()
@@ -73,9 +77,20 @@ func TransferPackageToBytes(inConn net.Conn, outConn net.Conn, handlers []Packag
 		}
 	}
 
-	defer wg.Done()
+	defer func() {
+		CloseConn(append(make([]net.Conn, 2), inConn, outConn))
+		wg.Done()
+		log.Printf("<------------------------------------------------------ close ...")
+	}()
 }
 
+func CloseConn(conns []net.Conn) {
+	for _, conn := range conns {
+		if conn != nil {
+			conn.Close()
+		}
+	}
+}
 func GetRemoteConn(addr string, port string) (net.Conn, error) {
 	return NewRemoteConn(addr, port)
 }
