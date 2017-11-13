@@ -5,7 +5,6 @@ import (
 	"encoding/binary"
 	"errors"
 	"io"
-	log "github.com/sirupsen/logrus"
 	"net"
 )
 
@@ -38,10 +37,6 @@ func (pkg *Package) ReadWithHeader(reader net.Conn) (err error) {
 		return errors.New("read error...")
 	}
 
-	log.Printf("read with header read size buf len = %v", n)
-	log.Printf("size buf = %v", sizeBuf)
-
-	len := BytesToInt(sizeBuf[:4])
 	headerLen := BytesToInt(sizeBuf[4:8])
 	bodyLen := BytesToInt(sizeBuf[8:12])
 
@@ -50,8 +45,6 @@ func (pkg *Package) ReadWithHeader(reader net.Conn) (err error) {
 
 	header := total[0:headerLen]
 	body := total[headerLen:bodyLen]
-
-	log.Printf("read with header, len = %v, headerLen = %v, bodyLen = %v", len, headerLen, bodyLen)
 
 	copy(pkg.len[:], sizeBuf[:4])
 	copy(pkg.headerLen[:], sizeBuf[4:8])
@@ -88,33 +81,6 @@ func (pkg *Package) ReadWithoutHeader(reader io.Reader) (err error) {
 	}
 }
 
-//writeWithHeader
-//func (pkg *Package) WriteWithHeader(writer io.Writer) (err error) {
-//	total := make([]byte, 0, 4+4+4+toInt(pkg.len[0:4]))
-//
-//	copy(total, pkg.len[:])
-//	copy(total[4:], pkg.headerLen[:])
-//	copy(total[4+4:], pkg.bodyLen[:])
-//	copy(total[4+4+4:], pkg.header[:])
-//	copy(total[4+4+4+len(pkg.header):], pkg.body[:])
-//	n, err := writer.Write(total)
-//	if n < 0 || err != nil {
-//		return errors.New("write error...")
-//	} else {
-//		return nil
-//	}
-//}
-//
-////writeWithoutHeader
-//func (pkg *Package) WriteWithoutHeader(writer io.Writer) (err error) {
-//	n, err := writer.Write(pkg.body)
-//	if n < 0 || err != nil {
-//		return errors.New("write error...")
-//	} else {
-//		return nil
-//	}
-//}
-
 //readfully
 
 //value of
@@ -141,7 +107,6 @@ func (pkg *Package) ToBytes() []byte {
 	copy(totalBytes[12:12+len(pkg.header)], pkg.header[:])
 	copy(totalBytes[12+len(pkg.header):12+len(pkg.header)+len(pkg.body)], pkg.body[:])
 
-	log.Printf("len = %v, headerLen = %v, bodyLen = %v, header = %v, body = %v", pkg.len, pkg.headerLen, pkg.bodyLen, pkg.header, pkg.body)
 	return totalBytes
 }
 
