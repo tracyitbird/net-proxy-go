@@ -1,11 +1,13 @@
 package client
 
 import (
-	log "github.com/sirupsen/logrus"
 	"net"
 	"sync"
-	"github.com/villcore/net-proxy-go/common"
 	"os"
+
+	log "github.com/sirupsen/logrus"
+	//"github.com/villcore/net-proxy-go/common"
+	"../common"
 )
 
 func init() {
@@ -23,8 +25,12 @@ func AcceptConn(localConn net.Conn, remoteAddr string, remotePort string) {
 	remoteConn, error := common.GetRemoteConn(remoteAddr, remotePort)
 
 	if error != nil {
-		localConn.Close()
-		remoteConn.Close()
+		if localConn != nil {
+			localConn.Close()
+		}
+		if remoteConn != nil {
+			remoteConn.Close()
+		}
 		log.Printf("build conn to remote [%v:%v] failed ...", remoteAddr, remotePort)
 		return
 	}
@@ -36,8 +42,12 @@ func AcceptConn(localConn net.Conn, remoteAddr string, remotePort string) {
 	go common.TransferPackageToBytes(remoteConn, localConn, make([]common.PackageHandler, 0), wg)
 
 	defer func() {
-		localConn.Close()
-		remoteConn.Close()
+		if localConn != nil {
+			localConn.Close()
+		}
+		if remoteConn != nil {
+			remoteConn.Close()
+		}
 		log.Printf("tunnel close ...")
 	}()
 

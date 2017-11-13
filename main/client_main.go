@@ -1,12 +1,14 @@
 package main
 
 import (
-	"github.com/villcore/net-proxy-go/client"
 	"fmt"
-	log "github.com/sirupsen/logrus"
 	"net"
 	"os"
 	"strconv"
+
+	log "github.com/sirupsen/logrus"
+	//"github.com/villcore/net-proxy-go/client"
+	"../client"
 )
 
 func init() {

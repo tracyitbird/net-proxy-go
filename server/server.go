@@ -1,17 +1,18 @@
 package server
 
 import (
-	log "github.com/sirupsen/logrus"
 	"net"
 	"strings"
 	"sync"
 	"errors"
 	"strconv"
-
-	"github.com/villcore/net-proxy-go/common"
 	"fmt"
 	"net/http"
 	"bufio"
+
+	log "github.com/sirupsen/logrus"
+	//"github.com/villcore/net-proxy-go/common"
+	"../common"
 )
 
 const (
@@ -30,7 +31,9 @@ func AcceptConn(localConn net.Conn) {
 	var wg sync.WaitGroup
 	wg.Add(2)
 
-	handlers := make([]common.PackageHandler, 0)
+	bytesToPackageHandlers := make([]common.PackageHandler, 0)
+	packageToBytesHandlers := make([]common.PackageHandler, 0)
+
 	protocalDetected := false
 	interrupt := false
 
@@ -47,7 +50,7 @@ func AcceptConn(localConn net.Conn) {
 			interrupt = true
 		}
 
-		for _, handler := range handlers {
+		for _, handler := range packageToBytesHandlers {
 			pkg = handler.Handle(&pkg)
 		}
 
@@ -61,13 +64,13 @@ func AcceptConn(localConn net.Conn) {
 		switch protocal {
 		case HTTP:
 			log.Println("http protocal...")
-			//break
+			break
 		case HTTPS:
 			log.Println("https protocal...")
-			//break
+			break
 		case SOCKS_5:
 			log.Println("socks_5 protocal...")
-			//break
+			break
 		default:
 			log.Println("unrecognized protocal...")
 			wg.Done()
@@ -87,8 +90,6 @@ func AcceptConn(localConn net.Conn) {
 		return
 	}
 
-	log.Printf("a")
-
 	addr, port, err := parseAddressAndPort(buf, protocal, localConn)
 	if err != nil {
 		wg.Done()
@@ -96,8 +97,6 @@ func AcceptConn(localConn net.Conn) {
 		localConn.Close()
 		return
 	}
-
-	log.Printf("b")
 
 	log.Printf("need connect to server [%v:%v]", addr, port)
 	remoteConn, error := common.NewRemoteConn(addr, strconv.Itoa(port))
@@ -112,16 +111,24 @@ func AcceptConn(localConn net.Conn) {
 	log.Printf("build conn to remote [%v:%v] success ...", addr, port)
 
 	if(protocal == HTTPS) {
-		//TODO handlers handle
+		//TODO bytesToPackageHandlers handle
 		httpsConnectResp := "HTTP/1.0 200 Connection Established\r\n\r\n";
 
 		httpsRespPkg := *common.NewPackage()
 		httpsRespPkg.ValueOf(make([]byte, 0), []byte(httpsConnectResp))
+
+		for _, handler := range bytesToPackageHandlers {
+			httpsRespPkg = handler.Handle(&httpsRespPkg)
+		}
+
 		localConn.Write(httpsRespPkg.ToBytes())
 	}
 
 	if(protocal == HTTP) {
 		remoteConn.Write(buf)
+	}
+
+	if(protocal == SOCKS_5) {
 	}
 
 	//transfer
@@ -144,87 +151,15 @@ func AcceptConn(localConn net.Conn) {
 	wg.Wait()
 }
 
-// make sure proxy detect done !!!
-//func AcceptConn(localConn net.Conn) {
-//	var wg sync.WaitGroup
-//	wg.Add(1)
-//
-//	//100kb
-//	buf := make([]byte, 1024 * 100)
-//
-//	n, err := localConn.Read(buf)
-//	if err != nil {
-//		log.Printf("read bytes form conn %v failed...\n", localConn.RemoteAddr())
-//	}
-//
-//	//log.Printf("read %v bytes form conn %v ...\n", n, localConn.RemoteAddr())
-//	//req := string(buf[:n])
-//	//log.Print(len([]byte(req)), "\n")
-//	//log.Printf("read content = \n%v ...\n", req)
-//
-//
-//	protocal := parseProtocal(buf, n)
-//	switch protocal {
-//	case HTTP:
-//		log.Println("http protocal...")
-//		break
-//	case HTTPS:
-//		log.Println("https protocal...")
-//		break
-//	case SOCKS_5:
-//		log.Println("socks_5 protocal...")
-//		break
-//	default:
-//		log.Println("unrecognized protocal...")
-//		wg.Done()
-//		return
-//	}
-//
-//	addr, port, err := parseAddressAndPort(buf[:n], protocal, localConn)
-//	if err != nil {
-//		log.Println(err)
-//		wg.Done()
-//		return
-//	}
-//
-//	fmt.Println(addr, port)
-//	localConnCnt++
-//	//remoteConn, err := connectRemote(addr, port)
-//	//if err != nil {
-//	//	log.Println(err)
-//	//	wg.Done()
-//	//	return
-//	//}
-//	remoteConnCnt++
-//
-//
-//	//pipe(localConn, remoteConn, wg)
-//
-//	time.Sleep(3 * 1000 * 1000 * 1000)
-//	wg.Done()
-//	defer func() {
-//		//if remoteConn != nil {
-//		//	remoteConn.Close()
-//		//	log.Printf("close connections [local:%v, remote:%v] ...\n", )
-//		//	remoteConnCnt--
-//		//}
-//		if localConn != nil {
-//			localConn.Close()
-//			log.Printf("close connection [local:%v] ...\n", localConn.RemoteAddr())
-//			localConnCnt--
-//		}
-//		fmt.Printf("==========================================================================\n [localConnCnt = %v, remoteConnCnt = %v]\n", localConnCnt, remoteConnCnt)
-//	}()
-//	wg.Wait()
-//}
-
 func parseProtocal(req []byte, len int) int {
 	//TODO SOCKS_5
 
 	//HTTPS
-	headerInfo := string(req[:7])
-	if strings.EqualFold("CONNECT", headerInfo) {
-		return HTTPS
+	if len >= 7 {
+		headerInfo := string(req[:7])
+		if strings.EqualFold("CONNECT", headerInfo) {
+			return HTTPS
+		}
 	}
 
 	//HTTP
@@ -250,20 +185,6 @@ func parseProtocal(req []byte, len int) int {
 
 	return -1
 }
-
-//func connectRemote(addr string, port int) (remoteConn net.Conn, err error) {
-//	var server = addr + ":" + string(port)
-//	conn, err := net.Dial("tcp", server)
-//	if err != nil {
-//		return nil, errors.New("connect server failed...")
-//	}
-//	return conn, nil
-//}
-//
-//func pipe(localConn net.Conn, remoteConn net.Conn, handlers list.List, wg sync.WaitGroup) {
-//	//err wg.Done
-//
-//}
 
 func parseAddressAndPort(firstReq []byte, protocal int, localConn net.Conn) (addr string, port int, err error) {
 	//log.Printf("read content = \n%v ...\n", string(firstReq))
