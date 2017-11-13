@@ -6,9 +6,12 @@ import (
 	"os"
 	"strconv"
 
+	_ "net/http/pprof"
 	log "github.com/sirupsen/logrus"
 	//"github.com/villcore/net-proxy-go/client"
 	"../client"
+	"net/http"
+	"runtime"
 )
 
 func init() {
@@ -16,6 +19,18 @@ func init() {
 }
 
 func main() {
+	go func() {
+		http.ListenAndServe("localhost:6001", nil)
+	}()
+
+	go func() {
+		http.HandleFunc("/goroutines", func(w http.ResponseWriter, r *http.Request) {
+			num := strconv.FormatInt(int64(runtime.NumGoroutine()), 10)
+			w.Write([]byte(num))
+		});
+		http.ListenAndServe("localhost:6002", nil)
+	}()
+
 	listenPort := 50081
 
 	remoteAddr := "127.0.0.1"
