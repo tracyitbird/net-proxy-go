@@ -1,13 +1,10 @@
 package client
 
 import (
-//	"errors"
-	//"fmt"
 	"log"
 	"net"
 	"sync"
-	//"time"
-	"../common"
+	"github.com/villcore/net-proxy-go/common"
 	"os"
 )
 

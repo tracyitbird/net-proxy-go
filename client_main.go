@@ -1,7 +1,7 @@
 package main
 
 import (
-	"../net-proxy-go/client"
+	"github.com/villcore/net-proxy-go/client"
 	"fmt"
 	"log"
 	"net"

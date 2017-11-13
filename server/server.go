@@ -1,20 +1,14 @@
 package server
 
 import (
-	//"fmt"
 	"log"
 	"net"
-	//"os"
 	"strings"
 	"sync"
-	//"time"
 	"errors"
-	//"container/list"
 	"strconv"
 
-	"../common"
-	//"net/http"
-	//"bufio"
+	"github.com/villcore/net-proxy-go/common"
 	"fmt"
 	"net/http"
 	"bufio"
