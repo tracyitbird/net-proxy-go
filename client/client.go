@@ -6,8 +6,8 @@ import (
 	"os"
 
 	log "github.com/sirupsen/logrus"
-	//"github.com/villcore/net-proxy-go/common"
-	"../common"
+	"github.com/villcore/net-proxy-go/common"
+	//"../common"
 )
 
 func init() {

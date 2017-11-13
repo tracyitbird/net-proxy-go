@@ -8,8 +8,8 @@ import (
 
 	_ "net/http/pprof"
 	log "github.com/sirupsen/logrus"
-	//"github.com/villcore/net-proxy-go/client"
-	"../client"
+	"github.com/villcore/net-proxy-go/client"
+	//"../client"
 	"net/http"
 	"runtime"
 )
@@ -33,7 +33,7 @@ func main() {
 
 	listenPort := 50081
 
-	remoteAddr := "127.0.0.1"
+	remoteAddr := "45.77.13.249"
 	remotePort := "60081"
 
 	fmt.Print("local client start...\n")
