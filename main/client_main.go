@@ -3,7 +3,7 @@ package main
 import (
 	"github.com/villcore/net-proxy-go/client"
 	"fmt"
-	"log"
+	log "github.com/sirupsen/logrus"
 	"net"
 	"os"
 	"strconv"

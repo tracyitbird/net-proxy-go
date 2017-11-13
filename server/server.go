@@ -1,7 +1,7 @@
 package server
 
 import (
-	"log"
+	log "github.com/sirupsen/logrus"
 	"net"
 	"strings"
 	"sync"

@@ -1,7 +1,7 @@
 package client
 
 import (
-	"log"
+	log "github.com/sirupsen/logrus"
 	"net"
 	"sync"
 	"github.com/villcore/net-proxy-go/common"

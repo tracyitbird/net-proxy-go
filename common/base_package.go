@@ -5,7 +5,7 @@ import (
 	"encoding/binary"
 	"errors"
 	"io"
-	"log"
+	log "github.com/sirupsen/logrus"
 	"net"
 )
 

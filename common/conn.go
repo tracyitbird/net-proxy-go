@@ -4,7 +4,7 @@ import (
 	"container/list"
 	"net"
 	"sync"
-	"log"
+	log "github.com/sirupsen/logrus"
 )
 
 type Connection struct {
