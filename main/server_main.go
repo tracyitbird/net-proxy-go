@@ -6,8 +6,8 @@ import (
 
 	_ "net/http/pprof"
 	log "github.com/sirupsen/logrus"
-	"github.com/villcore/net-proxy-go/server"
-	//"../server"
+	//"github.com/villcore/net-proxy-go/server"
+	"../server"
 	"net/http"
 	"strconv"
 	"runtime"
