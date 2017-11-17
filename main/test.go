@@ -20,7 +20,9 @@ func main() {
 	}
 
 	//aes的加密字符串
+	//32
 	key_text := "astaxie12798akljzmknm.ahkjkljl;k"
+
 	if len(os.Args) > 2 {
 		key_text = os.Args[2]
 	}
