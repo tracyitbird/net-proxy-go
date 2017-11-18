@@ -6,6 +6,7 @@ import (
 	"io"
 	"crypto/rand"
 	"crypto/aes"
+	"fmt"
 )
 
 const(
@@ -69,6 +70,10 @@ func (c *Cipher) InitDecrypt(iv []byte) (err error) {
 	c.iv = iv
 
 	block, err := aes.NewCipher(c.key)
+	if err != nil {
+		fmt.Println("create block error ...")
+		return err
+	}
 	c.dec, err = cipher.NewCFBDecrypter(block, iv), nil
 	return nil
 }

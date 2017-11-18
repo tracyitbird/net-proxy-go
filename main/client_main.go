@@ -10,30 +10,12 @@ import (
 	log "github.com/sirupsen/logrus"
 	//"github.com/villcore/net-proxy-go/client"
 	"../client"
-	"net/http"
-	"runtime"
 )
 
-func init() {
-	log.SetOutput(os.Stdout)
-}
-
 func main() {
-	go func() {
-		http.ListenAndServe("localhost:6001", nil)
-	}()
-
-	go func() {
-		http.HandleFunc("/goroutines", func(w http.ResponseWriter, r *http.Request) {
-			num := strconv.FormatInt(int64(runtime.NumGoroutine()), 10)
-			w.Write([]byte(num))
-		});
-		http.ListenAndServe("localhost:6002", nil)
-	}()
-
 	listenPort := 50081
 
-	remoteAddr := "45.77.13.249"
+	remoteAddr := "127.0.0.1"
 	remotePort := "60081"
 
 	fmt.Print("local client start...\n")

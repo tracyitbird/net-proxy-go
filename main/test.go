@@ -5,14 +5,19 @@ import (
 	"fmt"
 )
 
+func sliceModify(slice *[]int) {
+	// slice[0] = 88
+	*slice = append(*slice, 6)
+}
+
 func main() {
+	slice := []int{1, 2, 3, 4, 5}
+	sliceModify(&slice)
+	fmt.Println(slice)
+
 	testStr := "hello this is a test str ..."
 
-	cipher, err := encrypt.NewCipher("villcore")
 
-	if err != nil {
-		fmt.Println("init cipher error ...")
-	}
 
 	iv, err := cipher.InitEncrypt()
 	if err != nil {

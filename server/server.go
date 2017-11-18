@@ -13,6 +13,8 @@ import (
 	log "github.com/sirupsen/logrus"
 	//"github.com/villcore/net-proxy-go/common"
 	"../common"
+	"../encrypt"
+	"os"
 )
 
 const (
@@ -21,17 +23,33 @@ const (
 	SOCKS_5 = 3
 )
 
+func init() {
+	log.SetOutput(os.Stdout)
+}
+
 //1.接受本地连接
 //2.解析包, 解析协议, 解析目的地址
 //3.构建远程连接
 //4.循环转发(接受包 -> handler处理 -> 发送)
 //5.错误处理
 func AcceptConn(localConn net.Conn) {
+	var bytesToPackageHandlers []common.PackageHandler = make([]common.PackageHandler, 0)
+	var packageToBytesHandlers []common.PackageHandler = make([]common.PackageHandler, 0)
+	//
+	cipher, err := encrypt.NewCipher("villcore")
+	if err != nil {
+		fmt.Println("init cipher error ...")
+	}
+
+	encryptHandler := common.NewEncryptHandler(cipher)
+	bytesToPackageHandlers = append(bytesToPackageHandlers, encryptHandler)
+
+	//
+	decryptHandler := common.NewDecryptHandler(cipher)
+	packageToBytesHandlers = append(packageToBytesHandlers, decryptHandler)
+
 	var wg sync.WaitGroup
 	wg.Add(2)
-
-	bytesToPackageHandlers := make([]common.PackageHandler, 0)
-	packageToBytesHandlers := make([]common.PackageHandler, 0)
 
 	protocalDetected := false
 	interrupt := false

@@ -24,7 +24,6 @@ func (encryptHandler *EncryptHandler) Handle(pkg *Package) (newPkg Package) {
 	var encryptHeader []byte
 	encryptBody := make([]byte, len(body))
 
-	encryptHandler.encrypt.Encrypt(encryptBody, body)
 
 	if !encryptHandler.init {
 		//init
@@ -39,6 +38,7 @@ func (encryptHandler *EncryptHandler) Handle(pkg *Package) (newPkg Package) {
 
 		tmp := make([]byte, len(header))
 		encryptHandler.encrypt.Encrypt(tmp, header)
+		encryptHandler.encrypt.Encrypt(encryptBody, body)
 
 		copy(encryptHeader[:4], IntToBytes(len(iv))[:])
 		copy(encryptHeader[4:len(iv)], iv[:])
@@ -47,10 +47,17 @@ func (encryptHandler *EncryptHandler) Handle(pkg *Package) (newPkg Package) {
 	} else {
 		encryptHeader = make([]byte, len(header))
 		encryptHandler.encrypt.Encrypt(encryptHeader, header)
+		encryptHandler.encrypt.Encrypt(encryptBody, body)
 	}
 
 	nPkg.ValueOf(encryptHeader, encryptBody)
+	fmt.Println("encrypt header = ", nPkg.GetHeader())
+
 	return nPkg
+}
+
+func NewEncryptHandler (cipher *encrypt.Cipher) (*EncryptHandler){
+	return &EncryptHandler{encrypt:*cipher}
 }
 
 //decrypt handler
@@ -60,9 +67,14 @@ type DecryptHandler struct {
 	init bool
 }
 
+func NewDecryptHandler (cipher *encrypt.Cipher) (*DecryptHandler){
+	return &DecryptHandler{decrypt:*cipher}
+}
+
 func (decryptHandler *DecryptHandler) Handle(pkg *Package) (newPkg Package) {
 	header := pkg.GetHeader()
 	body := pkg.GetBody()
+	fmt.Println("decrypt header = ", header)
 
 	var nPkg Package
 	var decryptHeader []byte
@@ -71,7 +83,9 @@ func (decryptHandler *DecryptHandler) Handle(pkg *Package) (newPkg Package) {
 	if !decryptHandler.init {
 		lvLen := BytesToInt(header[:4])
 		iv := header[4:4+lvLen]
-		decryptHandler.decrypt.InitDecrypt(iv)
+		tmp := make([]byte, len(iv))
+		copy(tmp[:], iv[:])
+		decryptHandler.decrypt.InitDecrypt(tmp)
 
 		decryptHeader = make([]byte, len(header) - 4 - len(iv))
 		decryptHandler.decrypt.Decrypt(decryptHeader, header[4+len(iv):])
@@ -98,5 +112,5 @@ type CompressHandler struct {
 }
 
 type DecompressHandler struct {
-	
+
 }
