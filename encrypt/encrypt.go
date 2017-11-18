@@ -1,4 +1,4 @@
-package common
+package encrypt
 
 import (
 	"crypto/cipher"
@@ -6,18 +6,21 @@ import (
 	"io"
 	"crypto/rand"
 	"crypto/aes"
-	"errors"
+)
+
+const(
+	IV_LEN = 16
 )
 
 type Cipher struct {
 	enc cipher.Stream
 	dec cipher.Stream
 	key []byte
-	iv [] byte
+	iv  [] byte
 }
 
 func NewCipher(password string) (cipher *Cipher, err error) {
-	return &Cipher{key:generateKeyUsePassword(password, 32)}, nil
+	return &Cipher{key: generateKeyUsePassword(password, IV_LEN)}, nil
 }
 
 func md5Sum(src []byte) []byte {
@@ -47,33 +50,33 @@ func generateKeyUsePassword(password string, keyLen int) (key []byte) {
 }
 
 // Initializes the block cipher with CFB mode, returns IV.
-func (c *Cipher) initEncrypt() (err error) {
-	if c.iv == nil {
-		c.iv = make([]byte, 16)
+func (c *Cipher) InitEncrypt() (iv []byte, err error) {
+	if c.iv == nil || len(iv) == 0 {
+		c.iv = make([]byte, IV_LEN)
 		if _, err := io.ReadFull(rand.Reader, iv); err != nil {
 			return nil, err
 		}
-		c.iv = iv
+		iv = c.iv
 	} else {
 		iv = c.iv
 	}
 	block, err := aes.NewCipher(c.key)
-	if err != nil {
-		return err
-	}
-	c.enc = cipher.NewCTR(block, iv)
-	return errors.New("init encrypt error ...")
+	c.enc, err = cipher.NewCFBEncrypter(block, iv), nil
+	return iv, nil
 }
 
-func (c *Cipher) initDecrypt(iv []byte) (err error) {
-	c.dec, err = c.info.newStream(c.key, iv, Decrypt)
-	return
+func (c *Cipher) InitDecrypt(iv []byte) (err error) {
+	c.iv = iv
+
+	block, err := aes.NewCipher(c.key)
+	c.dec, err = cipher.NewCFBDecrypter(block, iv), nil
+	return nil
 }
 
-func (c *Cipher) encrypt(dst, src []byte) {
+func (c *Cipher) Encrypt(dst, src []byte) {
 	c.enc.XORKeyStream(dst, src)
 }
 
-func (c *Cipher) decrypt(dst, src []byte) {
+func (c *Cipher) Decrypt(dst, src []byte) {
 	c.dec.XORKeyStream(dst, src)
 }

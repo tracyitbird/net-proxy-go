@@ -1,73 +1,37 @@
 package main
 
 import (
+	"../encrypt"
 	"fmt"
-	"os"
-	"crypto/aes"
-	"crypto/cipher"
-	"compress/gzip"
-	"bytes"
-	"log"
 )
-var commonIV = []byte{0x00, 0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07, 0x08, 0x09, 0x0a, 0x0b, 0x0c, 0x0d, 0x0e, 0x0f}
 
 func main() {
-	//需要去加密的字符串
-	plaintext := []byte("My name is Astaxie")
-	//如果传入加密串的话，plaint就是传入的字符串
-	if len(os.Args) > 1 {
-		plaintext = []byte(os.Args[1])
-	}
+	testStr := "hello this is a test str ..."
 
-	//aes的加密字符串
-	//32
-	key_text := "astaxie12798akljzmknm.ahkjkljl;k"
-
-	if len(os.Args) > 2 {
-		key_text = os.Args[2]
-	}
-
-	fmt.Println(len(key_text))
-
-	// 创建加密算法aes
-	c, err := aes.NewCipher([]byte(key_text))
-	if err != nil {
-		fmt.Printf("Error: NewCipher(%d bytes) = %s", len(key_text), err)
-		os.Exit(-1)
-	}
-
-	//加密字符串
-	cfb := cipher.NewCFBEncrypter(c, commonIV)
-	ciphertext := make([]byte, len(plaintext))
-	cfb.XORKeyStream(ciphertext, plaintext)
-	fmt.Printf("%s=>%x\n", plaintext, ciphertext)
-
-	// 解密字符串
-	cfbdec := cipher.NewCFBDecrypter(c, commonIV)
-	plaintextCopy := make([]byte, len(plaintext))
-	cfbdec.XORKeyStream(plaintextCopy, ciphertext)
-	fmt.Printf("%x=>%s\n", ciphertext, plaintextCopy)
-
-
-	//测试压缩
-	var buf bytes.Buffer
-	zw := gzip.NewWriter(&buf)
-
-	zw.Write([]byte("A long time ago in a galaxy far, far away..."))
-	fmt.Println(len([]byte("A long time ago in a galaxy far, far away...")))
+	cipher, err := encrypt.NewCipher("villcore")
 
 	if err != nil {
-		log.Fatal(err)
+		fmt.Println("init cipher error ...")
 	}
 
-	if err := zw.Close(); err != nil {
-		log.Fatal(err)
+	iv, err := cipher.InitEncrypt()
+	if err != nil {
+		fmt.Println("init cipher error ...")
 	}
 
-	fmt.Println(len(buf.Bytes()))
-	zr, err := gzip.NewReader(&buf)
+	cipher.InitDecrypt(iv)
+	if err != nil {
+		fmt.Println("init cipher error ...")
+	}
 
-	preAlloc := make([]byte, 100)
-	n, err := zr.Read(preAlloc)
-	fmt.Println(string(preAlloc[:n]))
+	eBytes := make([]byte, len(testStr))
+	dBytes := make([]byte, len(testStr))
+
+	cipher.Encrypt(eBytes, []byte(testStr))
+	fmt.Println(string(eBytes))
+
+	cipher.Decrypt(dBytes, eBytes)
+
+	fmt.Println(string(dBytes))
+
 }
