@@ -43,12 +43,9 @@ func AcceptConn(localConn net.Conn, password string) {
 
 	encryptHandler := common.NewEncryptHandler(cipher)
 	bytesToPackageHandlers = append(bytesToPackageHandlers, encryptHandler)
-	fmt.Println(" bytes to package heandler len = ", len(bytesToPackageHandlers))
 	//
 	decryptHandler := common.NewDecryptHandler(cipher)
 	packageToBytesHandlers = append(packageToBytesHandlers, decryptHandler)
-	fmt.Println(" package to bytes heandler len = ", len(packageToBytesHandlers))
-
 
 	decryptHandler.SetInitPostHook(func() {
 		encryptHandler.SetIv(decryptHandler.GetIv())
@@ -77,16 +74,14 @@ func AcceptConn(localConn net.Conn, password string) {
 			interrupt = true
 		}
 
-		fmt.Println("ori body len = ", len(pkg.GetBody()))
 		for _, handler := range packageToBytesHandlers {
 			pkg = handler.Handle(&pkg)
 		}
 
 		//detect protocal
-		fmt.Println("post body len = ", len(pkg.GetBody()))
 		body := pkg.GetBody()
 		buf = body
-		log.Printf("server recv first pkg = %v", string(body))
+		//log.Printf("server recv first pkg = %v", string(body))
 		protocal = parseProtocal(body, len(body))
 
 		switch protocal {
