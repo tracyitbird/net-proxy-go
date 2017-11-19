@@ -4,13 +4,12 @@ import (
 	"net"
 	"os"
 
-	log "github.com/sirupsen/logrus"
-
 	//"github.com/villcore/net-proxy-go/server"
 	"../server"
 	"../conf"
 	"fmt"
 	"sync"
+	"log"
 )
 
 func init() {

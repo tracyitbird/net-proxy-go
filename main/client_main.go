@@ -5,11 +5,10 @@ import (
 	"net"
 	"os"
 
-	log "github.com/sirupsen/logrus"
-
 	//"github.com/villcore/net-proxy-go/client"
 	"../client"
 	"../conf"
+	"log"
 )
 
 func main() {
