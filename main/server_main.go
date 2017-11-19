@@ -38,21 +38,21 @@ func startListen(portAndPassword conf.PortAndPassword) {
 	listenAddrAndPort := ":" + listenPort
 	password := portAndPassword.Password
 	fmt.Println("start listen port ", listenPort)
-	log.WithField("fname", "server_main").Info("server start...")
+	log.Println("server start...")
 	listener, err := net.Listen("tcp", listenAddrAndPort)
 	if err != nil {
-		log.WithField("fname", "server_main").Info("erver starting listen failed at port [%v] ...", listenPort)
+		log.Println("erver starting listen failed at port [%v] ...", listenPort)
 	}
 
 	addr := listener.Addr()
-	log.WithField("fname", "server_main").Info("server staring listen address : [%v] ...", addr.String())
+	log.Println("server staring listen address : [%v] ...", addr.String())
 
 	for {
 		localConn, err := listener.Accept()
 		if err != nil {
-			log.WithField("fname", "server_main").Info("accept conn [%v] failed ...\n", localConn.LocalAddr())
+			log.Println("accept conn [%v] failed ...\n", localConn.LocalAddr())
 		}
-		log.WithField("fname", "server_main").Info("accept conn [%v] success ...\n", localConn.RemoteAddr())
+		log.Println("accept conn [%v] success ...\n", localConn.RemoteAddr())
 
 		go server.AcceptConn(localConn, password)
 	}
