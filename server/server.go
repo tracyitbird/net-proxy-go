@@ -43,10 +43,17 @@ func AcceptConn(localConn net.Conn) {
 
 	encryptHandler := common.NewEncryptHandler(cipher)
 	bytesToPackageHandlers = append(bytesToPackageHandlers, encryptHandler)
-
+	fmt.Println(" bytes to package heandler len = ", len(bytesToPackageHandlers))
 	//
 	decryptHandler := common.NewDecryptHandler(cipher)
 	packageToBytesHandlers = append(packageToBytesHandlers, decryptHandler)
+	fmt.Println(" package to bytes heandler len = ", len(packageToBytesHandlers))
+
+
+	decryptHandler.SetInitPostHook(func() {
+		encryptHandler.SetIv(decryptHandler.GetIv())
+		encryptHandler.Init()
+	})
 
 	var wg sync.WaitGroup
 	wg.Add(2)
@@ -70,15 +77,16 @@ func AcceptConn(localConn net.Conn) {
 			interrupt = true
 		}
 
+		fmt.Println("ori body len = ", len(pkg.GetBody()))
 		for _, handler := range packageToBytesHandlers {
 			pkg = handler.Handle(&pkg)
 		}
 
 		//detect protocal
-
+		fmt.Println("post body len = ", len(pkg.GetBody()))
 		body := pkg.GetBody()
 		buf = body
-		log.Printf("server recv first pkg = \n%v\n", string(body))
+		log.Printf("server recv first pkg = %v", string(body))
 		protocal = parseProtocal(body, len(body))
 
 		switch protocal {
@@ -143,7 +151,6 @@ func AcceptConn(localConn net.Conn) {
 
 	if !hasError {
 		if (protocal == HTTPS) {
-			//TODO bytesToPackageHandlers handle
 			httpsConnectResp := "HTTP/1.0 200 Connection Established\r\n\r\n";
 			httpsRespPkg := *common.NewPackage()
 			httpsRespPkg.ValueOf(make([]byte, 0), []byte(httpsConnectResp))
@@ -165,14 +172,13 @@ func AcceptConn(localConn net.Conn) {
 
 	if !hasError {
 		//transfer
-		go common.TransferPackageToBytes(localConn, remoteConn, make([]common.PackageHandler, 0), &wg)
+		go common.TransferPackageToBytes(localConn, remoteConn, packageToBytesHandlers, &wg)
 
 		//transfer
-		go common.TransferBytesToPackage(remoteConn, localConn, make([]common.PackageHandler, 0), &wg)
+		go common.TransferBytesToPackage(remoteConn, localConn, bytesToPackageHandlers, &wg)
 	}
 
 	wg.Wait()
-	log.Printf("!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!tunnel close ...")
 	defer func() {
 		if localConn != nil {
 			localConn.Close()
@@ -180,7 +186,6 @@ func AcceptConn(localConn net.Conn) {
 		if remoteConn != nil {
 			remoteConn.Close()
 		}
-		log.Printf("<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<")
 	}()
 }
 
@@ -215,7 +220,6 @@ func parseProtocal(req []byte, len int) int {
 			return HTTP
 		}
 	}
-
 	return -1
 }
 

@@ -37,6 +37,11 @@ func AcceptConn(localConn net.Conn, remoteAddr string, remotePort string) {
 	decryptHandler := common.NewDecryptHandler(cipher)
 	packageToBytesHandlers = append(packageToBytesHandlers, decryptHandler)
 
+	encryptHandler.SetInitPostHook(func() {
+		decryptHandler.SetIv(encryptHandler.GetIv())
+		decryptHandler.Init()
+	})
+
 	var wg sync.WaitGroup
 	wg.Add(2)
 	remoteConn, error := common.GetRemoteConn(remoteAddr, remotePort)
@@ -60,7 +65,6 @@ func AcceptConn(localConn net.Conn, remoteAddr string, remotePort string) {
 	}
 
 	wg.Wait()
-	log.Printf("!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!tunnel close ...")
 	defer func() {
 		if localConn != nil {
 			localConn.Close()
@@ -68,6 +72,5 @@ func AcceptConn(localConn net.Conn, remoteAddr string, remotePort string) {
 		if remoteConn != nil {
 			remoteConn.Close()
 		}
-		log.Printf(">>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>tunnel close ...")
 	}()
 }

@@ -4,7 +4,7 @@ import (
 	"container/list"
 	"net"
 	"sync"
-	log "github.com/sirupsen/logrus"
+	//log "github.com/sirupsen/logrus"
 )
 
 type Connection struct {
@@ -21,11 +21,9 @@ func TransferBytesToPackage(inConn net.Conn, outConn net.Conn, handlers []Packag
 	for running {
 		read, err := inConn.Read(buf)
 		if err != nil {
-			log.Printf("read bytes form conn %v failed...\n", inConn.RemoteAddr())
+			//log.Printf("read bytes form conn %v failed...\n", inConn.RemoteAddr())
 			running = false
 		}
-
-		log.Printf("client read %v bytes from %v", read, inConn.RemoteAddr())
 
 		header := make([]byte, 0)
 		body := make([]byte, read)
@@ -39,19 +37,18 @@ func TransferBytesToPackage(inConn net.Conn, outConn net.Conn, handlers []Packag
 			pkg = handler.Handle(&pkg)
 		}
 		//write一定是全部写入
-		write, error := outConn.Write(pkg.ToBytes())
+		_, error := outConn.Write(pkg.ToBytes())
 		if error != nil {
-			log.Printf("write bytes to conn %v failed...\n", outConn.RemoteAddr())
+			//log.Printf("write bytes to conn %v failed...\n", outConn.RemoteAddr())
 			running = false
 		}
-		log.Printf("client write %v bytes to remote ...", write, outConn.RemoteAddr())
+		//log.Printf("client write %v bytes to remote ...", write, outConn.RemoteAddr())
 
 	}
 
 	defer func() {
 		CloseConn(append(make([]net.Conn, 2), inConn, outConn))
 		wg.Done()
-		log.Printf("---------------------------------------------------> close ... %v", wg)
 	}()
 }
 
@@ -62,7 +59,6 @@ func TransferPackageToBytes(inConn net.Conn, outConn net.Conn, handlers []Packag
 		err := pkg.ReadWithHeader(inConn)
 
 		if err != nil {
-			log.Printf("read bytes form conn %v failed...\n", inConn.RemoteAddr())
 			running = false
 		}
 
@@ -72,7 +68,6 @@ func TransferPackageToBytes(inConn net.Conn, outConn net.Conn, handlers []Packag
 		//write一定是全部写入
 		_, error := outConn.Write(pkg.body)
 		if error != nil {
-			log.Printf("write bytes to conn %v failed...\n", outConn.RemoteAddr())
 			running = false
 		}
 	}
@@ -80,7 +75,6 @@ func TransferPackageToBytes(inConn net.Conn, outConn net.Conn, handlers []Packag
 	defer func() {
 		CloseConn(append(make([]net.Conn, 2), inConn, outConn))
 		wg.Done()
-		log.Printf("<------------------------------------------------------ close ...")
 	}()
 }
 

@@ -42,13 +42,14 @@ func (pkg *Package) ReadWithHeader(reader net.Conn) (err error) {
 	n2, err := io.ReadAtLeast(reader, total, headerLen + bodyLen)
 
 	header := total[0:headerLen]
-	body := total[headerLen:bodyLen]
+	body := total[headerLen:headerLen+bodyLen]
 
 	copy(pkg.len[:], sizeBuf[:4])
 	copy(pkg.headerLen[:], sizeBuf[4:8])
 	copy(pkg.bodyLen[:], sizeBuf[8:12])
 	pkg.header = header
 	pkg.body = body
+
 
 	if n2 < 0 || err != nil {
 		return errors.New("read error...")

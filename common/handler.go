@@ -14,6 +14,24 @@ type EncryptHandler struct {
 	encrypt encrypt.Cipher
 	iv []byte
 	init bool
+	initPostHook func()
+}
+
+func (encryptHandler *EncryptHandler) SetInitPostHook(f func()) {
+	encryptHandler.initPostHook = f
+}
+
+func (encryptHandler *EncryptHandler) GetIv() ([]byte) {
+	return encryptHandler.iv
+}
+
+func (encryptHandler *EncryptHandler) SetIv(iv []byte) {
+	encryptHandler.iv = iv
+}
+
+func (encryptHandler *EncryptHandler) Init() {
+	encryptHandler.init = true
+	encryptHandler.encrypt.InitEncrypt()
 }
 
 func (encryptHandler *EncryptHandler) Handle(pkg *Package) (newPkg Package) {
@@ -44,14 +62,19 @@ func (encryptHandler *EncryptHandler) Handle(pkg *Package) (newPkg Package) {
 		copy(encryptHeader[4:len(iv)], iv[:])
 		copy(encryptHeader[4 + len(iv):], tmp[:])
 		encryptHandler.init = true
+		encryptHandler.initPostHook()
 	} else {
-		encryptHeader = make([]byte, len(header))
-		encryptHandler.encrypt.Encrypt(encryptHeader, header)
-		encryptHandler.encrypt.Encrypt(encryptBody, body)
+		if len(header) != 0 {
+			encryptHeader = make([]byte, len(header))
+			encryptHandler.encrypt.Encrypt(encryptHeader, header)
+		}
+
+		if (len(body) != 0) {
+			encryptHandler.encrypt.Encrypt(encryptBody, body)
+		}
 	}
 
 	nPkg.ValueOf(encryptHeader, encryptBody)
-	fmt.Println("encrypt header = ", nPkg.GetHeader())
 
 	return nPkg
 }
@@ -65,16 +88,33 @@ type DecryptHandler struct {
 	decrypt encrypt.Cipher
 	iv []byte
 	init bool
+	initPostHook func()
 }
 
 func NewDecryptHandler (cipher *encrypt.Cipher) (*DecryptHandler){
 	return &DecryptHandler{decrypt:*cipher}
 }
 
+func (decryptHandler *DecryptHandler) SetInitPostHook(f func()) {
+	decryptHandler.initPostHook = f
+}
+
+func (decryptHandler *DecryptHandler) GetIv() ([]byte) {
+	return decryptHandler.iv
+}
+
+func (decryptHandler *DecryptHandler) SetIv(iv []byte) {
+	decryptHandler.iv = iv
+}
+
+func (decryptHandler *DecryptHandler) Init() {
+	decryptHandler.init = true
+	decryptHandler.decrypt.InitDecrypt(decryptHandler.iv)
+}
+
 func (decryptHandler *DecryptHandler) Handle(pkg *Package) (newPkg Package) {
 	header := pkg.GetHeader()
 	body := pkg.GetBody()
-	fmt.Println("decrypt header = ", header)
 
 	var nPkg Package
 	var decryptHeader []byte
@@ -85,6 +125,7 @@ func (decryptHandler *DecryptHandler) Handle(pkg *Package) (newPkg Package) {
 		iv := header[4:4+lvLen]
 		tmp := make([]byte, len(iv))
 		copy(tmp[:], iv[:])
+		decryptHandler.iv = tmp
 		decryptHandler.decrypt.InitDecrypt(tmp)
 
 		decryptHeader = make([]byte, len(header) - 4 - len(iv))
@@ -93,17 +134,22 @@ func (decryptHandler *DecryptHandler) Handle(pkg *Package) (newPkg Package) {
 
 		nPkg = *NewPackage()
 		nPkg.ValueOf(decryptHeader, decryptBody)
-		decryptHandler.decrypt.Decrypt(decryptBody, body)
 
 		decryptHandler.init = true
+		decryptHandler.initPostHook()
 	} else {
 		decryptHeader = make([]byte, len(header))
+		if len(header) != 0 {
+			decryptHandler.decrypt.Decrypt(decryptHeader, header[:])
+		}
 
-		decryptHandler.decrypt.Decrypt(decryptHeader, header[:])
-		decryptHandler.decrypt.Decrypt(decryptBody, body)
+		if (len(body) != 0) {
+			decryptHandler.decrypt.Decrypt(decryptBody, body)
+		}
 	}
 
 	nPkg.ValueOf(decryptHeader, decryptBody)
+
 	return nPkg
 }
 
