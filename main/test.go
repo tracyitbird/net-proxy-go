@@ -3,6 +3,7 @@ package main
 import (
 	"../encrypt"
 	"fmt"
+	"../conf"
 )
 
 func sliceModify(slice *[]int) {
@@ -38,4 +39,10 @@ func main() {
 
 	fmt.Println(string(dBytes))
 
+	//json
+	clientConfig, _:= conf.ReadClientConf("client.conf")
+	fmt.Println(clientConfig)
+
+	serverConfig, _ := conf.ReadServerConf("server.conf")
+	fmt.Println(len(serverConfig.PortPair))
 }

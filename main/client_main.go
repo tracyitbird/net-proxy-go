@@ -4,25 +4,31 @@ import (
 	"fmt"
 	"net"
 	"os"
-	"strconv"
 
-	_ "net/http/pprof"
 	log "github.com/sirupsen/logrus"
+
 	//"github.com/villcore/net-proxy-go/client"
 	"../client"
+	"../conf"
 )
 
 func main() {
-	listenPort := 50081
+	clientConf, err := conf.ReadClientConf("client.conf")
+	if err != nil {
+		fmt.Println("can not load conf file ...")
+		return
+	}
 
-	remoteAddr := "127.0.0.1"
-	remotePort := "60081"
+	listenPort := clientConf.LocalPort
+	remoteAddr := clientConf.RemoteAddr
+	remotePort := clientConf.RemotePort
+	password := clientConf.Password
 
 	fmt.Print("local client start...\n")
 	//
 	log.SetOutput(os.Stdout)
 
-	listenAddr := ":" + strconv.Itoa(listenPort)
+	listenAddr := ":" + listenPort
 	log.Printf("[%v]", listenAddr)
 
 	listener, err := net.Listen("tcp", listenAddr)
@@ -42,6 +48,6 @@ func main() {
 		}
 		log.Printf("accept conn [%v] success ...\n", conn.RemoteAddr())
 
-		go client.AcceptConn(conn, remoteAddr, remotePort)
+		go client.AcceptConn(conn, remoteAddr, remotePort, password)
 	}
 }

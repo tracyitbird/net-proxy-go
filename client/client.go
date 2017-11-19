@@ -20,12 +20,12 @@ func init() {
 //2.构建远程连接,(可用连接连接池)
 //3.循环转发(接受包 -> handler处理 -> 发送)
 //4.错误处理
-func AcceptConn(localConn net.Conn, remoteAddr string, remotePort string) {
+func AcceptConn(localConn net.Conn, remoteAddr string, remotePort string, password string) {
 
 	var bytesToPackageHandlers []common.PackageHandler = make([]common.PackageHandler, 0)
 	var packageToBytesHandlers []common.PackageHandler = make([]common.PackageHandler, 0)
 	//
-	cipher, err := encrypt.NewCipher("villcore")
+	cipher, err := encrypt.NewCipher(password)
 	if err != nil {
 		fmt.Println("init cipher error ...")
 	}
