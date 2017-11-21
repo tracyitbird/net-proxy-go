@@ -45,4 +45,26 @@ func main() {
 
 	serverConfig, _ := conf.ReadServerConf("server.conf")
 	fmt.Println(len(serverConfig.PortPair))
+
+	testDefer(0)
+	testDefer(1)
+
+	i := 0
+	defer fmt.Println(i)
+	i++
+}
+
+func testDefer(num int) (int) {
+	defer func() {
+		fmt.Println("end...")
+	}()
+	if num % 2 == 0 {
+		return 0
+	}
+
+	fmt.Println(num)
+	return 1
+
+
+	return 1
 }

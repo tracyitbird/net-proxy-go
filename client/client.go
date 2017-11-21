@@ -20,6 +20,7 @@ func init() {
 //2.构建远程连接,(可用连接连接池)
 //3.循环转发(接受包 -> handler处理 -> 发送)
 //4.错误处理
+//TODO defer panic recover 处理
 func AcceptConn(localConn net.Conn, remoteAddr string, remotePort string, password string) {
 
 	var bytesToPackageHandlers []common.PackageHandler = make([]common.PackageHandler, 0)
