@@ -34,6 +34,10 @@ func init() {
 //5.错误处理
 //TODO defer recover panic 处理
 func AcceptConn(localConn net.Conn, password string) {
+	var wg sync.WaitGroup
+	wg.Add(2)
+
+
 	var bytesToPackageHandlers []common.PackageHandler = make([]common.PackageHandler, 0)
 	var packageToBytesHandlers []common.PackageHandler = make([]common.PackageHandler, 0)
 	//
@@ -52,9 +56,6 @@ func AcceptConn(localConn net.Conn, password string) {
 		encryptHandler.SetIv(decryptHandler.GetIv())
 		encryptHandler.Init()
 	})
-
-	var wg sync.WaitGroup
-	wg.Add(2)
 
 	protocalDetected := false
 	interrupt := false

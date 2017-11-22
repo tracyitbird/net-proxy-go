@@ -66,10 +66,12 @@ func AcceptConn(localConn net.Conn, remoteAddr string, remotePort string, passwo
 	}
 
 	wg.Wait()
+
 	defer func() {
 		if localConn != nil {
 			localConn.Close()
 		}
+
 		if remoteConn != nil {
 			remoteConn.Close()
 		}
