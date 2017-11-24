@@ -37,7 +37,7 @@ func AcceptConn(localConn net.Conn, password string) {
 	var wg sync.WaitGroup
 	wg.Add(2)
 
-
+	//init handlers start ...
 	var bytesToPackageHandlers []common.PackageHandler = make([]common.PackageHandler, 0)
 	var packageToBytesHandlers []common.PackageHandler = make([]common.PackageHandler, 0)
 	//
@@ -56,6 +56,8 @@ func AcceptConn(localConn net.Conn, password string) {
 		encryptHandler.SetIv(decryptHandler.GetIv())
 		encryptHandler.Init()
 	})
+
+	//init handlers end ...
 
 	protocalDetected := false
 	interrupt := false
