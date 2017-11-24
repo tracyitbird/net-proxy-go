@@ -18,8 +18,8 @@ import (
 )
 
 const (
-	HTTP = 1
-	HTTPS = 2
+	HTTP    = 1
+	HTTPS   = 2
 	SOCKS_5 = 3
 )
 
@@ -34,30 +34,27 @@ func init() {
 //5.错误处理
 //TODO defer recover panic 处理
 func AcceptConn(localConn net.Conn, password string) {
+	var remoteConn net.Conn
 	var wg sync.WaitGroup
 	wg.Add(2)
 
-	//init handlers start ...
-	var bytesToPackageHandlers []common.PackageHandler = make([]common.PackageHandler, 0)
-	var packageToBytesHandlers []common.PackageHandler = make([]common.PackageHandler, 0)
-	//
-	cipher, err := encrypt.NewCipher(password)
-	if err != nil {
-		fmt.Println("init cipher error ...")
-	}
+	defer func() {
+		if err := recover(); err != nil {
+			log.Println("error ... [%v]", err)
 
-	encryptHandler := common.NewEncryptHandler(cipher)
-	bytesToPackageHandlers = append(bytesToPackageHandlers, encryptHandler)
-	//
-	decryptHandler := common.NewDecryptHandler(cipher)
-	packageToBytesHandlers = append(packageToBytesHandlers, decryptHandler)
+			if localConn != nil {
+				localConn.Close()
+			}
 
-	decryptHandler.SetInitPostHook(func() {
-		encryptHandler.SetIv(decryptHandler.GetIv())
-		encryptHandler.Init()
-	})
+			if remoteConn != nil {
+				remoteConn.Close()
+			}
+		}
+	}()
 
-	//init handlers end ...
+
+
+	bytesToPackageHandlers, packageToBytesHandlers := initHandlers(password)
 
 	protocalDetected := false
 	interrupt := false
@@ -67,7 +64,8 @@ func AcceptConn(localConn net.Conn, password string) {
 	var protocal int = -1
 	var addr string
 	var port int
-	var remoteConn net.Conn
+
+	//
 
 	if !interrupt || !protocalDetected {
 		pkg := *common.NewPackage()
@@ -116,7 +114,6 @@ func AcceptConn(localConn net.Conn, password string) {
 		}
 		hasError = true
 	}
-
 
 	if !hasError {
 		parsedAddr, parsedPort, err := parseAddressAndPort(buf, protocal, localConn)
@@ -187,6 +184,27 @@ func AcceptConn(localConn net.Conn, password string) {
 		}
 	}()
 }
+func initHandlers(password string) ([]common.PackageHandler, []common.PackageHandler) {
+	//init handlers start ...
+	var bytesToPackageHandlers []common.PackageHandler = make([]common.PackageHandler, 0)
+	var packageToBytesHandlers []common.PackageHandler = make([]common.PackageHandler, 0)
+	//
+	cipher, err := encrypt.NewCipher(password)
+	if err != nil {
+		fmt.Println("init cipher error ...")
+	}
+	encryptHandler := common.NewEncryptHandler(cipher)
+	bytesToPackageHandlers = append(bytesToPackageHandlers, encryptHandler)
+	//
+	decryptHandler := common.NewDecryptHandler(cipher)
+	packageToBytesHandlers = append(packageToBytesHandlers, decryptHandler)
+	decryptHandler.SetInitPostHook(func() {
+		encryptHandler.SetIv(decryptHandler.GetIv())
+		encryptHandler.Init()
+	})
+	//init handlers end ...
+	return bytesToPackageHandlers, packageToBytesHandlers
+}
 
 func parseProtocal(req []byte, len int) int {
 	//TODO SOCKS_5
@@ -253,7 +271,7 @@ func parseHttpsAddress(firstReq []byte) (addr string, port int, err error) {
 	addr = infos[0]
 	port = 443
 
-	if(len(infos) > 1) {
+	if (len(infos) > 1) {
 		port, err = strconv.Atoi(infos[1])
 	}
 
@@ -275,7 +293,7 @@ func parseHttpAddress(firstReq []byte) (addr string, port int, err error) {
 	addr = infos[0]
 	port = 80
 
-	if(len(infos) > 1) {
+	if (len(infos) > 1) {
 		port, err = strconv.Atoi(infos[1])
 	}
 
